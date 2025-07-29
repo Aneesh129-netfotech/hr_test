@@ -10,6 +10,9 @@ const GenerateTest = ({ onNavigate, onDataPass }) => {
   question_type: 'mcq',  
 });
 
+const [mcqCount, setMcqCount] = useState('');
+const [codingCount, setCodingCount] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -18,7 +21,16 @@ const GenerateTest = ({ onNavigate, onDataPass }) => {
     setLoading(true);
     setError('');
     try {
-      const data = await generateTest(formData);
+      const finalFormData = { ...formData };
+
+      if (formData.question_type === 'mixed') {
+        finalFormData.mcq_count = parseInt(mcqCount) || 0;
+        finalFormData.coding_count = parseInt(codingCount) || 0;
+        finalFormData.num_questions = finalFormData.mcq_count + finalFormData.coding_count;
+      }
+
+      const data = await generateTest(finalFormData);
+
       onNavigate('finalize', data.questions); // ✅ Navigate + pass questions
     } catch (err) {
       setError('Failed to generate test.');
@@ -40,6 +52,8 @@ const GenerateTest = ({ onNavigate, onDataPass }) => {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
   };
+
+  
 
   const difficultyOptions = [
     { 
@@ -236,6 +250,39 @@ const GenerateTest = ({ onNavigate, onDataPass }) => {
                   ))}
                 </div>
               </div>
+
+              {/* Conditional input for mixed type */}
+              {formData.question_type === 'mixed' && (
+                <div className="grid md:grid-cols-2 gap-6 mt-6">
+                  {/* MCQ Count */}
+                  <div>
+                    <label className="block font-medium text-gray-800 mb-2">Number of MCQ Questions</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="50"
+                      value={mcqCount}
+                      onChange={(e) => setMcqCount(e.target.value)}
+                      placeholder="e.g., 3"
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-slate-500 focus:outline-none"
+                    />
+                  </div>
+                  {/* Coding Count */}
+                  <div>
+                    <label className="block font-medium text-gray-800 mb-2">Number of Coding Questions</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="50"
+                      value={codingCount}
+                      onChange={(e) => setCodingCount(e.target.value)}
+                      placeholder="e.g., 2"
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-slate-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
 
 
               {/* Submit Button */}

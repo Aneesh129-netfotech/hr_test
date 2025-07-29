@@ -12,6 +12,8 @@ class TestRequest(BaseModel):
     difficulty: str
     num_questions: int
     question_type: Optional[str] = "mcq"  # values: "mcq", "coding", "mixed"
+    mcq_count: Optional[int] = 0
+    coding_count: Optional[int] = 0
 
 class TestFinalizeRequest(BaseModel):
     questions: List[Question]  # Expect list of question dicts

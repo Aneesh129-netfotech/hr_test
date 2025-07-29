@@ -48,12 +48,18 @@ async def generate_questions(request: TestRequest):
             "Do NOT include explanations. Keep questions practical and relevant."
         )
     elif request.question_type == "mixed":
+        mcq_count = getattr(request, "mcq_count", request.num_questions // 2)
+        coding_count = getattr(request, "coding_count", request.num_questions - mcq_count)
+
         prompt = (
-            f"Generate a mixed set of {request.num_questions} {request.difficulty} level questions "
-            f"on the topic '{request.topic}'. Include both MCQs and coding problems. "
-            "Each object should have: `question`, `options` (optional for MCQ), and `answer`. "
-            "Return only a valid JSON array of such objects."
+            f"Generate a mixed set of {mcq_count + coding_count} {request.difficulty} level questions "
+            f"on the topic '{request.topic}'. Include exactly {mcq_count} multiple choice questions and "
+            f"{coding_count} coding questions.\n\n"
+            "Each MCQ should include: `question`, `options` (list of 4), and `answer`.\n"
+            "Each coding question should include: `question` and `answer` (code or logic).\n"
+            "Respond only with a JSON array of such objects. No extra commentary."
         )
+
     else:  # default to MCQ
         prompt = (
             f"Generate {request.num_questions} {request.difficulty} level multiple choice questions "
