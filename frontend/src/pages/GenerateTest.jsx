@@ -1,20 +1,51 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileText, AlertCircle, Target, Hash, Zap, Award, Layers } from 'lucide-react';
 import { generateTest } from '../api';
 
 const GenerateTest = ({ onNavigate, onDataPass }) => {
   const [formData, setFormData] = useState({
-  topic: '',
-  difficulty: 'easy',
-  num_questions: 5,
-  question_type: 'mcq',  
-});
-
-const [mcqCount, setMcqCount] = useState('');
-const [codingCount, setCodingCount] = useState('');
-
+    topic: '',
+    difficulty: 'easy',
+    num_questions: 5,
+    question_type: 'mcq',  
+  });
+  const [mcqCount, setMcqCount] = useState('');
+  const [codingCount, setCodingCount] = useState('');
   const [loading, setLoading] = useState(false);
+  const [jobSummaryLoading, setJobSummaryLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const JOB_SUMMARY_API_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4N2UwZDFkOGVkZWRlM2I1NDc4MDc0ZiIsImlhdCI6MTc1MzY4MTIwNCwiZXhwIjoxNzU0Mjg2MDA0fQ.jcP5i8d66SM1LCfGnSgdcZTVPV1QSgqnqVn0QP4pvNc"; // Hardcoded token
+
+  // Fetch job summary from API on component mount
+  useEffect(() => {
+    const fetchJobSummary = async () => {
+      try {
+        setJobSummaryLoading(true);
+        const response = await fetch('http://localhost:5000/api/jd/get-jd-summary/68870990e214ee4cab4957db', {
+          headers: {
+            'Authorization': `Bearer ${JOB_SUMMARY_API_TOKEN}`, // Use hardcoded token
+            'Content-Type': 'application/json',
+          },
+        });
+        if (!response.ok) throw new Error('Failed to fetch job summary');
+        const data = await response.json();
+        const jobSummary = data.jobSummary; // Extract only the jobSummary field
+        setFormData(prev => ({ ...prev, topic: jobSummary }));
+      } catch (err) {
+        console.error('Error fetching job summary:', err);
+        setError('Failed to load job summary. Using default value.');
+        setFormData(prev => ({
+          ...prev,
+          topic: 'Mock job summary: Python developer role requiring skills in web development and data analysis.'
+        }));
+      } finally {
+        setJobSummaryLoading(false);
+      }
+    };
+
+    fetchJobSummary();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -30,8 +61,7 @@ const [codingCount, setCodingCount] = useState('');
       }
 
       const data = await generateTest(finalFormData);
-
-      onNavigate('finalize', data.questions); // ✅ Navigate + pass questions
+      onNavigate('finalize', data.questions); // Navigate + pass questions
     } catch (err) {
       setError('Failed to generate test.');
     } finally {
@@ -42,9 +72,7 @@ const [codingCount, setCodingCount] = useState('');
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     if (name === 'num_questions') {
-      // Handle empty string or invalid numbers
       const numValue = value === '' ? '' : parseInt(value);
-      // Only update if it's empty string or a valid positive number
       if (value === '' || (!isNaN(numValue) && numValue > 0 && numValue <= 50)) {
         setFormData(prev => ({ ...prev, [name]: numValue }));
       }
@@ -52,8 +80,6 @@ const [codingCount, setCodingCount] = useState('');
       setFormData(prev => ({ ...prev, [name]: value }));
     }
   };
-
-  
 
   const difficultyOptions = [
     { 
@@ -126,23 +152,23 @@ const [codingCount, setCodingCount] = useState('');
             )}
 
             <div className="space-y-8">
-              {/* Topic Input */}
+              {/* Job Summary Display */}
               <div>
                 <label className="flex items-center text-base font-semibold text-gray-900 mb-3">
                   <div className="bg-slate-600 p-1.5 rounded-md mr-2">
                     <Target className="w-4 h-4 text-white" />
                   </div>
-                  Test Topic
+                  Job Summary
                 </label>
-                <input
-                  type="text"
-                  name="topic"
-                  value={formData.topic}
-                  onChange={handleInputChange}
-                  placeholder="e.g., JavaScript Fundamentals, Project Management, Data Structures"
-                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-colors text-gray-900 placeholder-gray-500"
-                  required
-                />
+                {jobSummaryLoading ? (
+                  <div className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-500">
+                    Loading job summary...
+                  </div>
+                ) : (
+                  <div className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-900">
+                    {formData.topic || 'No job summary available'}
+                  </div>
+                )}
               </div>
 
               <div className="grid lg:grid-cols-2 gap-8">
@@ -156,7 +182,12 @@ const [codingCount, setCodingCount] = useState('');
                   </label>
                   <div className="space-y-3">
                     {difficultyOptions.map((option) => (
-                      <label key={option.value} className={`flex items-center p-4 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer ${formData.difficulty === option.value ? 'border-slate-500 bg-slate-50' : 'border-gray-200'}`}>
+                      <label
+                        key={option.value}
+                        className={`flex items-center p-4 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer ${
+                          formData.difficulty === option.value ? 'border-slate-500 bg-slate-50' : 'border-gray-200'
+                        }`}
+                      >
                         <input
                           type="radio"
                           name="difficulty"
@@ -195,13 +226,11 @@ const [codingCount, setCodingCount] = useState('');
                     value={formData.num_questions}
                     onChange={handleInputChange}
                     onKeyDown={(e) => {
-                      // Prevent backspace from navigating back when input is empty or at start
                       if (e.key === 'Backspace') {
                         e.stopPropagation();
                       }
                     }}
                     onFocus={(e) => {
-                      // Select all text when focused for better UX
                       e.target.select();
                     }}
                     min="1"
@@ -212,8 +241,6 @@ const [codingCount, setCodingCount] = useState('');
                   <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
                     <p className="text-gray-700 text-sm">Choose between 1-50 questions for your assessment</p>
                   </div>
-                  
-                  {/* Question Count Visualization */}
                   <div className="mt-3 grid grid-cols-10 gap-1">
                     {formData.num_questions && typeof formData.num_questions === 'number' && formData.num_questions > 0 && 
                       [...Array(Math.min(formData.num_questions, 50))].map((_, i) => (
@@ -234,9 +261,12 @@ const [codingCount, setCodingCount] = useState('');
                 </label>
                 <div className="space-y-3">
                   {["mcq", "coding", "mixed"].map((type) => (
-                    <label key={type} className={`flex items-center p-3 border rounded-lg cursor-pointer ${
-                      formData.question_type === type ? 'border-slate-500 bg-slate-50' : 'border-gray-200'
-                    }`}>
+                    <label
+                      key={type}
+                      className={`flex items-center p-3 border rounded-lg cursor-pointer ${
+                        formData.question_type === type ? 'border-slate-500 bg-slate-50' : 'border-gray-200'
+                      }`}
+                    >
                       <input
                         type="radio"
                         name="question_type"
@@ -254,7 +284,6 @@ const [codingCount, setCodingCount] = useState('');
               {/* Conditional input for mixed type */}
               {formData.question_type === 'mixed' && (
                 <div className="grid md:grid-cols-2 gap-6 mt-6">
-                  {/* MCQ Count */}
                   <div>
                     <label className="block font-medium text-gray-800 mb-2">Number of MCQ Questions</label>
                     <input
@@ -267,7 +296,6 @@ const [codingCount, setCodingCount] = useState('');
                       className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-slate-500 focus:outline-none"
                     />
                   </div>
-                  {/* Coding Count */}
                   <div>
                     <label className="block font-medium text-gray-800 mb-2">Number of Coding Questions</label>
                     <input
@@ -283,15 +311,12 @@ const [codingCount, setCodingCount] = useState('');
                 </div>
               )}
 
-
-
               {/* Submit Button */}
               <div className="pt-4">
                 <button
                   onClick={handleSubmit}
-                  disabled={loading || !formData.topic.trim() || !formData.num_questions || formData.num_questions < 1}
+                  disabled={loading || jobSummaryLoading || !formData.topic.trim() || !formData.num_questions || formData.num_questions < 1}
                   className="w-full !bg-blue-600 hover:!bg-blue-700 disabled:!bg-gray-400 !text-white font-semibold py-4 px-6 rounded-lg transition-colors flex items-center justify-center shadow-sm hover:shadow-md disabled:shadow-none text-base"
-
                 >
                   {loading ? (
                     <>
@@ -313,7 +338,7 @@ const [codingCount, setCodingCount] = useState('');
             {
               icon: Target,
               title: "AI-Powered Generation",
-              description: "Advanced algorithms create relevant questions tailored to your topic",
+              description: "Advanced algorithms create relevant questions tailored to your job summary",
               bgColor: "bg-white"
             },
             {
