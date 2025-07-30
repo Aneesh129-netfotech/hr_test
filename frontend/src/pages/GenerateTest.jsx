@@ -15,7 +15,7 @@ const GenerateTest = ({ onNavigate, onDataPass }) => {
   const [jobSummaryLoading, setJobSummaryLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const JOB_SUMMARY_API_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4N2UwZDFkOGVkZWRlM2I1NDc4MDc0ZiIsImlhdCI6MTc1MzY4MTIwNCwiZXhwIjoxNzU0Mjg2MDA0fQ.jcP5i8d66SM1LCfGnSgdcZTVPV1QSgqnqVn0QP4pvNc"; // Hardcoded token
+  const JOB_SUMMARY_API_TOKEN = "Pass the authorization token when the hr login"; // Hardcoded token
 
   // Fetch job summary from API on component mount
   useEffect(() => {

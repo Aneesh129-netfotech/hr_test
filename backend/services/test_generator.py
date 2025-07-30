@@ -8,7 +8,7 @@ load_dotenv()
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 JOB_SUMMARY_API_URL = "http://localhost:5000/api/jd/get-jd-summary/68870990e214ee4cab4957db"
-JOB_SUMMARY_API_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4N2UwZDFkOGVkZWRlM2I1NDc4MDc0ZiIsImlhdCI6MTc1MzY4MTIwNCwiZXhwIjoxNzU0Mjg2MDA0fQ.jcP5i8d66SM1LCfGnSgdcZTVPV1QSgqnqVn0QP4pvNc"  # Hardcoded token
+JOB_SUMMARY_API_TOKEN = "Pass the authorization token when the hr login"  # Hardcoded token
 
 async def call_model(model_name: str, prompt: str):
     url = "https://openrouter.ai/api/v1/chat/completions"
