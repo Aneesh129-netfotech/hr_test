@@ -19,6 +19,7 @@ async def fetch_test(question_set_id: str):
 
     test_info = res.data[0]
     expires_at = test_info.get("expires_at")
+    duration = test_info.get("duration", 20)  # Get duration, default to 20 minutes
 
     now = datetime.now(timezone.utc)
     expires_dt = datetime.fromisoformat(expires_at)
@@ -31,7 +32,11 @@ async def fetch_test(question_set_id: str):
     if not q_res.data:
         raise HTTPException(status_code=404, detail="No questions found")
 
-    return {"questions": q_res.data}
+    return {
+        "questions": q_res.data,
+        "duration": duration,  # Include duration in response
+        "test_id": question_set_id
+    }
 
 
 @router.post("/submit")
@@ -41,6 +46,11 @@ async def submit_test(submission: TestSubmission):
     # Evaluate the test
     result = await evaluate_test(submission)
     print("✅ Evaluation result:", result)
+
+    # Calculate duration used in minutes if provided
+    duration_used_minutes = None
+    if submission.duration_used:
+        duration_used_minutes = round(submission.duration_used / 60, 2)
 
     # Always try to save the result, even if evaluation had issues
     try:
@@ -52,7 +62,9 @@ async def submit_test(submission: TestSubmission):
             "percentage": result.get("percentage", 0.0),
             "status": result.get("status", "Fail"),
             "total_questions": len(submission.questions),
-            "raw_feedback": result.get("raw_feedback", "")
+            "raw_feedback": result.get("raw_feedback", ""),
+            "duration_used_seconds": submission.duration_used,
+            "duration_used_minutes": duration_used_minutes
         }
         
         # Insert into database
@@ -77,5 +89,6 @@ async def submit_test(submission: TestSubmission):
         "status": result.get("status", "Fail"),
         "raw_feedback": result.get("raw_feedback", ""),
         "result_id": result.get("result_id"),
-        "database_error": result.get("database_error")
+        "database_error": result.get("database_error"),
+        "duration_used": duration_used_minutes
     }

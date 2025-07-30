@@ -4,7 +4,7 @@ import MonacoEditor from '@monaco-editor/react';
 import { submitTest } from '../api';
 import axios from 'axios';
 
-const JUDGE0_API_KEY = import.meta.env.VITE_JUDGE0_API_KEY; // Move this to .env in production
+const JUDGE0_API_KEY = import.meta.env.VITE_JUDGE0_API_KEY;
 const JUDGE0_HOST = 'judge0-ce.p.rapidapi.com';
 
 const formatTime = (seconds) => {
@@ -69,24 +69,32 @@ const PROGRAMMING_LANGUAGES = [
     defaultCode: 'package main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello, World!")\n}', 
     judgeId: 60 
   },
-  // Note: Some languages may not be available in all Judge0 instances
   { value: 'html', label: 'HTML', defaultCode: '<!-- HTML cannot be executed -->\n<h1>Hello, World!</h1>' },
   { value: 'css', label: 'CSS', defaultCode: '/* CSS cannot be executed */\nbody { color: blue; }' },
   { value: 'sql', label: 'SQL', defaultCode: '-- SQL execution requires database setup\nSELECT "Hello, World!" as message;', judgeId: 82 }
 ];
 
-const GiveTest = ({ testQuestions, questionSetId, onNavigate }) => {
+const GiveTest = ({ testQuestions, testDuration, questionSetId, onNavigate }) => {
   const [answers, setAnswers] = useState({});
   const [selectedLanguages, setSelectedLanguages] = useState({});
-  const [timeLeft, setTimeLeft] = useState(20 * 60);
+  const [timeLeft, setTimeLeft] = useState(null); // Will be set based on testDuration
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [outputs, setOutputs] = useState({});
-  const [runningCode, setRunningCode] = useState({}); // Track which code is running
+  const [runningCode, setRunningCode] = useState({});
+  const [testStarted, setTestStarted] = useState(false);
 
   const questions = testQuestions || [];
   const error = null;
+
+  // Initialize timer based on testDuration prop
+  useEffect(() => {
+    const duration = testDuration || 20; // Default to 20 minutes if not provided
+    const timeInSeconds = duration * 60;
+    setTimeLeft(timeInSeconds);
+    setTestStarted(true);
+  }, [testDuration]);
 
   const handleAnswerChange = (index, value) => {
     setAnswers(prev => ({ ...prev, [index]: value }));
@@ -100,7 +108,6 @@ const GiveTest = ({ testQuestions, questionSetId, onNavigate }) => {
         ...prev,
         [questionIndex]: selectedLang.defaultCode
       }));
-      // Clear previous output when language changes
       setOutputs(prev => ({ ...prev, [questionIndex]: '' }));
     }
   };
@@ -127,19 +134,17 @@ const GiveTest = ({ testQuestions, questionSetId, onNavigate }) => {
       return;
     }
 
-    // Set loading state
     setRunningCode(prev => ({ ...prev, [index]: true }));
     setOutputs(prev => ({ ...prev, [index]: '🔄 Running code...' }));
 
     try {
-      // Step 1: Submit code for execution
       console.log('📤 Submitting code to Judge0...');
       const submissionResponse = await axios.post(
         `https://${JUDGE0_HOST}/submissions`,
         {
           language_id: lang.judgeId,
-          source_code: btoa(sourceCode), // Base64 encode the source code
-          stdin: btoa(''), // Base64 encode empty stdin
+          source_code: btoa(sourceCode),
+          stdin: btoa(''),
         },
         {
           params: { 
@@ -151,7 +156,7 @@ const GiveTest = ({ testQuestions, questionSetId, onNavigate }) => {
             'X-RapidAPI-Host': JUDGE0_HOST,
             'Content-Type': 'application/json'
           },
-          timeout: 10000 // 10 second timeout
+          timeout: 10000
         }
       );
 
@@ -162,9 +167,8 @@ const GiveTest = ({ testQuestions, questionSetId, onNavigate }) => {
         throw new Error('No submission token received');
       }
 
-      // Step 2: Poll for results
       let attempts = 0;
-      const maxAttempts = 20; // Maximum 20 attempts (10 seconds)
+      const maxAttempts = 20;
       
       const pollResult = async () => {
         try {
@@ -188,26 +192,18 @@ const GiveTest = ({ testQuestions, questionSetId, onNavigate }) => {
           const data = resultResponse.data;
           console.log('📥 Poll response:', data);
 
-          // Status ID meanings:
-          // 1: In Queue, 2: Processing, 3: Accepted, 4: Wrong Answer, 5: Time Limit Exceeded
-          // 6: Compilation Error, 7: Runtime Error (SIGSEGV), 8: Runtime Error (SIGXFSZ)
-          // 9: Runtime Error (SIGFPE), 10: Runtime Error (SIGABRT), 11: Runtime Error (NZEC)
-          // 12: Runtime Error (Other), 13: Internal Error, 14: Exec Format Error
-          
           const status = data.status?.id;
           
           if (status === 1 || status === 2) {
-            // Still processing
             attempts++;
             if (attempts < maxAttempts) {
-              setTimeout(pollResult, 500); // Wait 500ms before next poll
+              setTimeout(pollResult, 500);
               return;
             } else {
               throw new Error('Code execution timeout - taking too long to complete');
             }
           }
 
-          // Execution completed, decode and display results
           let output = '';
           let hasError = false;
 
@@ -247,7 +243,6 @@ const GiveTest = ({ testQuestions, questionSetId, onNavigate }) => {
         }
       };
 
-      // Start polling
       await pollResult();
 
     } catch (err) {
@@ -278,9 +273,14 @@ const GiveTest = ({ testQuestions, questionSetId, onNavigate }) => {
       setSubmitting(true);
       const data = {
         question_set_id: questionSetId,
-        questions: testQuestions,
+        questions: testQuestions.map(q => ({
+          question: q.question,
+          options: q.options,
+          answer: q.answer
+        })),
         answers: testQuestions.map((_, idx) => answers[idx] || ''),
-        languages: testQuestions.map((_, idx) => selectedLanguages[idx] || 'javascript')
+        languages: testQuestions.map((_, idx) => selectedLanguages[idx] || 'javascript'),
+        duration_used: (testDuration * 60) - timeLeft // Calculate time used in seconds
       };
 
       const result = await submitTest(data);
@@ -293,16 +293,29 @@ const GiveTest = ({ testQuestions, questionSetId, onNavigate }) => {
     }
   };
 
+  // Timer effect
   useEffect(() => {
-    if (submitted) return;
+    if (submitted || !testStarted || timeLeft === null) return;
+    
     if (timeLeft <= 0) {
       handleSubmit();
       return;
     }
-    const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
+    
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          handleSubmit();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
     return () => clearInterval(timer);
-  }, [timeLeft, submitted]);
+  }, [timeLeft, submitted, testStarted]);
 
+  // Initialize languages and answers for coding questions
   useEffect(() => {
     const initialLanguages = {};
     const initialAnswers = {};
@@ -318,7 +331,22 @@ const GiveTest = ({ testQuestions, questionSetId, onNavigate }) => {
     setAnswers(prev => ({ ...prev, ...initialAnswers }));
   }, [questions]);
 
+  // Show loading state while timer is being initialized
+  if (!testStarted || timeLeft === null) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <p className="text-gray-600">Loading test...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (submitted && result) {
+    const totalDuration = testDuration || 20;
+    const timeUsed = totalDuration - Math.floor(timeLeft / 60);
+    
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-100 py-12 px-4">
         <div className="max-w-2xl mx-auto">
@@ -327,11 +355,21 @@ const GiveTest = ({ testQuestions, questionSetId, onNavigate }) => {
               <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Test Completed!</h1>
-            <p className="text-gray-600 mb-6">Thank you for taking the test</p>
-            <div className="bg-blue-50 rounded-lg p-6 mb-6">
-              <p className="text-2xl font-bold text-blue-600 mb-2">Your Score</p>
-              <p className="text-4xl font-bold text-gray-900">{result.score}/{result.max_score || (questions.length * 10)}</p>
+            <p className="text-gray-600 mb-4">Thank you for taking the test</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="bg-blue-50 rounded-lg p-6">
+                <p className="text-lg font-bold text-blue-600 mb-2">Your Score</p>
+                <p className="text-3xl font-bold text-gray-900">{result.score}/{result.max_score || (questions.length * 10)}</p>
+              </div>
+              
+              <div className="bg-purple-50 rounded-lg p-6">
+                <p className="text-lg font-bold text-purple-600 mb-2">Time Used</p>
+                <p className="text-3xl font-bold text-gray-900">{timeUsed} min</p>
+                <p className="text-sm text-gray-500">out of {totalDuration} minutes</p>
+              </div>
             </div>
+            
             <p className="text-sm text-gray-500 mb-6">Status: {result.status}</p>
             <button
               onClick={() => onNavigate('generate')}
@@ -345,16 +383,51 @@ const GiveTest = ({ testQuestions, questionSetId, onNavigate }) => {
     );
   }
 
+  // Get timer color based on remaining time
+  const getTimerColor = () => {
+    const totalTime = (testDuration || 20) * 60;
+    const percentLeft = (timeLeft / totalTime) * 100;
+    
+    if (percentLeft > 50) return 'text-green-600';
+    if (percentLeft > 25) return 'text-yellow-600';
+    if (percentLeft > 10) return 'text-orange-600';
+    return 'text-red-600';
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-lg shadow-md p-4 mb-6 flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-gray-900">Test in Progress</h1>
-          <div className="flex items-center text-red-600">
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900">Test in Progress</h1>
+            <p className="text-sm text-gray-600">
+              Duration: {testDuration || 20} minutes | Questions: {questions.length}
+            </p>
+          </div>
+          <div className={`flex items-center ${getTimerColor()}`}>
             <Clock className="w-5 h-5 mr-2" />
             <span className="font-mono text-lg font-semibold">{formatTime(timeLeft)}</span>
           </div>
         </div>
+
+        {/* Time warning */}
+        {timeLeft <= 300 && timeLeft > 60 && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 flex items-center">
+            <AlertCircle className="w-5 h-5 text-yellow-500 mr-3" />
+            <span className="text-yellow-700">
+              Warning: Only {Math.floor(timeLeft / 60)} minutes remaining!
+            </span>
+          </div>
+        )}
+
+        {timeLeft <= 60 && timeLeft > 0 && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-center">
+            <AlertCircle className="w-5 h-5 text-red-500 mr-3" />
+            <span className="text-red-700">
+              Critical: Less than 1 minute remaining!
+            </span>
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-center">
@@ -453,8 +526,7 @@ const GiveTest = ({ testQuestions, questionSetId, onNavigate }) => {
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            className="!bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-3 px-8 rounded-lg transition-colors
-"
+            className="!bg-blue-600 hover:!bg-blue-700 disabled:!bg-gray-400 !text-white font-semibold py-3 px-8 rounded-lg transition-colors"
           >
             {submitting ? (
               <>

@@ -17,9 +17,17 @@ class TestRequest(BaseModel):
 
 class TestFinalizeRequest(BaseModel):
     questions: List[Question]  # Expect list of question dicts
+    duration: Optional[int] = 20  # Duration in minutes, default 20
 
 class TestSubmission(BaseModel):
     question_set_id: UUID  # UUID, not str
     questions: List[Question]
     answers: List[str]
     languages: Optional[List[str]] = None  # Added for coding language support
+    duration_used: Optional[int] = None  # Time used in seconds
+
+class TestResponse(BaseModel):
+    test_link: str
+    test_id: str
+    duration: int
+    message: str

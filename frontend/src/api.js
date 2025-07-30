@@ -11,13 +11,33 @@ export const generateTest = async (formData) => {
   return await response.json();
 };
 
-export const finalizeTest = async (questions) => {
+export const finalizeTest = async (data) => {
+  // Handle both old format (just questions) and new format (questions + duration)
+  const requestData = {
+    questions: data.questions || data,
+    duration: data.duration || 20  // Default to 20 minutes
+  };
+
   const response = await fetch(`${BASE_URL}/api/hr/finalize-test`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ questions }),
+    body: JSON.stringify(requestData),
   });
   if (!response.ok) throw new Error('Failed to finalize test');
+  return await response.json();
+};
+
+// Get all tests (for HR dashboard)
+export const getAllTests = async () => {
+  const response = await fetch(`${BASE_URL}/api/hr/tests`);
+  if (!response.ok) throw new Error('Failed to fetch tests');
+  return await response.json();
+};
+
+// Get test results (for HR to view submissions)
+export const getTestResults = async (testId) => {
+  const response = await fetch(`${BASE_URL}/api/hr/tests/${testId}/results`);
+  if (!response.ok) throw new Error('Failed to fetch test results');
   return await response.json();
 };
 
@@ -36,4 +56,25 @@ export const submitTest = async (submissionData) => {
   });
   if (!response.ok) throw new Error('Failed to submit test');
   return await response.json();
+};
+
+// Utility functions
+export const extractTestIdFromUrl = (url) => {
+  try {
+    const urlObj = new URL(url);
+    const pathParts = urlObj.pathname.split('/');
+    return pathParts[pathParts.length - 1];
+  } catch (error) {
+    console.error('Invalid URL format:', error);
+    return null;
+  }
+};
+
+export const isValidTestUrl = (url) => {
+  try {
+    new URL(url);
+    return url.includes('/test/');
+  } catch {
+    return false;
+  }
 };

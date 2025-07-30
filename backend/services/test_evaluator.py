@@ -9,24 +9,34 @@ load_dotenv()
 async def evaluate_test(submission: TestSubmission):
     # Enhanced prompt with clearer instructions
     prompt = (
-        "You are an expert HR evaluator.\n\n"
-        "You will be given a list of questions and answers submitted by a candidate.\n"
-        "Some questions are Multiple Choice Questions (MCQs) with options, others are coding problems.\n\n"
-        "EVALUATION RULES:\n"
-        "1. For MCQ questions: If the candidate's answer matches any correct option exactly, give 10/10. Otherwise 0/10.\n"
-        "2. For Coding questions: Score out of 10 based on correctness, logic, efficiency, and code quality.\n\n"
-        "IMPORTANT: You MUST provide scores in this EXACT format:\n"
-        "Q1 - Type: MCQ - Score: 10/10\n"
-        "Q2 - Type: Coding - Score: 8/10\n"
-        "Q3 - Type: MCQ - Score: 0/10\n"
+        "You are an expert HR evaluator tasked with scoring a candidate's test submission.\n\n"
+        "Each question is either:\n"
+        "  • An MCQ (Multiple Choice Question) with predefined options and one correct answer.\n"
+        "  • A Coding Problem requiring code-based solutions.\n\n"
+        "Scoring Instructions:\n"
+        "1. **MCQ Questions**:\n"
+        "   - If the candidate's answer exactly matches the correct option, award **10/10**.\n"
+        "   - If it does not match, award **0/10**. No partial marks.\n"
+        "2. **Coding Questions**:\n"
+        "   - Evaluate based on: **Correctness, Logic, Efficiency, and Code Quality**.\n"
+        "   - Use the following rough rubric:\n"
+        "       - 10/10: Fully correct, optimal logic, clean code.\n"
+        "       - 8/10: Correct output, minor inefficiencies or style issues.\n"
+        "       - 6/10: Mostly correct, but logic can be improved.\n"
+        "       - 4/10: Partially working code, poor logic or structure.\n"
+        "       - 2/10 or 0/10: Wrong, incomplete, or irrelevant code.\n\n"
+        "**You MUST follow this exact output format**:\n"
+        "Q1 - Type: MCQ - Score: X/10\n"
+        "Q2 - Type: Coding - Score: X/10\n"
         "...\n\n"
-        "At the end, provide:\n"
+        "At the end, provide ONLY:\n"
         "TOTAL SCORE: X/Y\n"
-        "STATUS: Pass (if >= 50%) or Fail\n\n"
+        "STATUS: Pass (if X >= 50% of Y) or Fail\n\n"
         f"Number of Questions: {len(submission.questions)}\n"
         f"Maximum Possible Score: {len(submission.questions) * 10}\n\n"
-        "Questions and Answers:\n"
+        "Evaluate the following Questions and Answers:\n"
     )
+
     
     # Add each question and answer pair with clear formatting
     for i, (question, answer) in enumerate(zip(submission.questions, submission.answers), 1):

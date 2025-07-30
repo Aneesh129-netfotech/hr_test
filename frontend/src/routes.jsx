@@ -1,3 +1,4 @@
+// src/routes.jsx
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom';
 import GenerateTest from './pages/GenerateTest';
 import FinalizeTest from './pages/FinalizeTest';
@@ -7,7 +8,7 @@ import { useState, useEffect } from 'react';
 import { fetchTest } from './api';
 import React from 'react';
 
-// 🌟 Wrapper for FinalizeTest
+// Wrapper for FinalizeTest
 const FinalizeTestWrapper = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -31,11 +32,12 @@ const FinalizeTestWrapper = () => {
   );
 };
 
-// 🌟 Wrapper for GiveTest with dynamic param
+// Wrapper for GiveTest with dynamic param
 const GiveTestWrapper = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [testQuestions, setTestQuestions] = useState([]);
+  const [testDuration, setTestDuration] = useState(null); // Add state for duration
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -43,20 +45,24 @@ const GiveTestWrapper = () => {
     const loadTest = async () => {
       try {
         const data = await fetchTest(id);
-        setTestQuestions(data.questions);
+        console.log('📄 Fetched test data in GiveTestWrapper:', data); // Debug
+        setTestQuestions(data.questions || []);
+        setTestDuration(data.duration); // Set duration
+        setLoading(false);
       } catch (err) {
         console.error('❌ Failed to load test:', err);
         setErrorMsg('This test is either expired or does not exist.');
-      } finally {
         setLoading(false);
       }
     };
     loadTest();
   }, [id]);
 
-  if (loading) return <p className="text-center mt-10 text-lg font-medium">Loading test...</p>;
+  if (loading) {
+    return <p className="text-center mt-10 text-lg font-medium">Loading test...</p>;
+  }
 
-  if (errorMsg)
+  if (errorMsg) {
     return (
       <div className="text-center mt-20 text-red-600 text-lg font-semibold">
         {errorMsg}
@@ -69,20 +75,23 @@ const GiveTestWrapper = () => {
         </button>
       </div>
     );
+  }
 
   return (
     <GiveTest
       testQuestions={testQuestions}
+      testDuration={testDuration} // Pass duration
       questionSetId={id}
       onNavigate={(page) => {
         if (page === 'home') navigate('/');
+        else if (page === 'generate') navigate('/'); // Match onNavigate in GiveTest
         else if (page === 'success') navigate('/success');
       }}
     />
   );
 };
 
-// 🌟 Main App Routes
+// Main App Routes
 const AppRoutes = () => {
   const navigate = useNavigate();
 
