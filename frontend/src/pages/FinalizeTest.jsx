@@ -22,8 +22,9 @@ const FinalizeTest = ({ questions, onNavigate, onDataPass }) => {
     else setEditableQuestions([...questions]);
   }, [questions]);
 
-  // Auth token
-  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4N2UwZDFkOGVkZWRlM2I1NDc4MDc0ZiIsImlhdCI6MTc1NDQ2MDU0MiwiZXhwIjoxNzU1MDY1MzQyfQ.wtD5KUk3viGRH-UIq2SdKByRBEZ67V1jMcqzizHNPQM';   // pass the valid login generated token here
+  // Auth token and JD ID - Replace these with actual values
+  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4N2UwZDFkOGVkZWRlM2I1NDc4MDc0ZiIsImlhdCI6MTc1NDQ2MDU0MiwiZXhwIjoxNzU1MDY1MzQyfQ.wtD5KUk3viGRH-UIq2SdKByRBEZ67V1jMcqzizHNPQM';
+  const jdId = '687f78395eb49db9c41cc272'; // Replace with actual JD ID
 
   // Fetch filtered candidates from API
   const fetchCandidates = async () => {
@@ -31,10 +32,11 @@ const FinalizeTest = ({ questions, onNavigate, onDataPass }) => {
     setCandidatesError('');
     
     try {
-      const response = await fetch('http://localhost:5000/api/jd/get-all-filter-resumes/:jdId', {     // pass the valid jdId here when the JD get created 
+      const response = await fetch(`http://localhost:5000/api/jd/filtered-resumes/${jdId}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
 
@@ -122,6 +124,15 @@ const FinalizeTest = ({ questions, onNavigate, onDataPass }) => {
     if (percentage >= 70) return 'text-green-600 bg-green-100';
     if (percentage >= 50) return 'text-yellow-600 bg-yellow-100';
     return 'text-red-600 bg-red-100';
+  };
+
+  // Format skills array for display
+  const formatSkills = (skills) => {
+    if (!skills || !Array.isArray(skills)) return 'No skills listed';
+    
+    // Join skills and limit display length
+    const skillsText = skills.join(', ');
+    return skillsText.length > 100 ? skillsText.substring(0, 100) + '...' : skillsText;
   };
 
   // Question Edit Component
@@ -445,6 +456,12 @@ const FinalizeTest = ({ questions, onNavigate, onDataPass }) => {
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             <div className="flex items-center">
+                              <Mail className="w-4 h-4 mr-2" />
+                              Email
+                            </div>
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <div className="flex items-center">
                               <Percent className="w-4 h-4 mr-2" />
                               Match %
                             </div>
@@ -456,10 +473,15 @@ const FinalizeTest = ({ questions, onNavigate, onDataPass }) => {
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {candidates.map((candidate, index) => (
-                          <tr key={index} className="hover:bg-gray-50">
+                          <tr key={candidate._id || index} className="hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm font-medium text-gray-900">
-                                {candidate.fileName?.replace('.pdf', '') || 'N/A'}
+                                {candidate.name || 'N/A'}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">
+                                {candidate.email || 'N/A'}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
@@ -468,11 +490,8 @@ const FinalizeTest = ({ questions, onNavigate, onDataPass }) => {
                               </span>
                             </td>
                             <td className="px-6 py-4">
-                              <div className="text-sm text-gray-900">
-                                {candidate.skills && candidate.skills.length > 0 
-                                  ? candidate.skills.join(', ') 
-                                  : 'No specific skills listed'
-                                }
+                              <div className="text-sm text-gray-900" title={formatSkills(candidate.skills)}>
+                                {formatSkills(candidate.skills)}
                               </div>
                             </td>
                           </tr>
