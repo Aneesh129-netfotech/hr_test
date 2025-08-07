@@ -15,7 +15,7 @@ const FinalizeTest = ({ questions, onNavigate, onDataPass }) => {
   const [editableQuestions, setEditableQuestions] = useState([]);
   const [editingIndex, setEditingIndex] = useState(-1);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newQuestionType, setNewQuestionType] = useState('mcq'); // 'mcq' or 'coding'
+  const [newQuestionType, setNewQuestionType] = useState('mcq'); 
 
   useEffect(() => {
     if (!questions || questions.length === 0) onNavigate('generate');
@@ -23,7 +23,7 @@ const FinalizeTest = ({ questions, onNavigate, onDataPass }) => {
   }, [questions]);
 
   // Auth token
-  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4N2UwZDFkOGVkZWRlM2I1NDc4MDc0ZiIsImlhdCI6MTc1NDQ2MDU0MiwiZXhwIjoxNzU1MDY1MzQyfQ.wtD5KUk3viGRH-UIq2SdKByRBEZ67V1jMcqzizHNPQM';
+  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4N2UwZDFkOGVkZWRlM2I1NDc4MDc0ZiIsImlhdCI6MTc1NDQ2MDU0MiwiZXhwIjoxNzU1MDY1MzQyfQ.wtD5KUk3viGRH-UIq2SdKByRBEZ67V1jMcqzizHNPQM';   // pass the valid login generated token here
 
   // Fetch filtered candidates from API
   const fetchCandidates = async () => {
@@ -31,7 +31,7 @@ const FinalizeTest = ({ questions, onNavigate, onDataPass }) => {
     setCandidatesError('');
     
     try {
-      const response = await fetch('http://localhost:5000/api/jd/get-all-filter-resumes/687dd1d0ade16db1c547027b', {
+      const response = await fetch('http://localhost:5000/api/jd/get-all-filter-resumes/:jdId', {     // pass the valid jdId here when the JD get created 
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -201,14 +201,14 @@ const FinalizeTest = ({ questions, onNavigate, onDataPass }) => {
         <div className="flex gap-2">
           <button
             onClick={() => onSave(index, editedQuestion)}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center"
+            className="!bg-green-600 hover:!bg-green-700 text-white px-4 py-2 rounded-lg flex items-center"
           >
             <Save className="w-4 h-4 mr-1" />
             Save
           </button>
           <button
             onClick={onCancel}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center"
+            className="!bg-gray-600 hover:!bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center"
           >
             <X className="w-4 h-4 mr-1" />
             Cancel
@@ -345,14 +345,14 @@ const FinalizeTest = ({ questions, onNavigate, onDataPass }) => {
           <button
             onClick={() => onSave(newQuestion)}
             disabled={!newQuestion.question.trim() || !newQuestion.answer.trim()}
-            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg flex items-center"
+            className="!bg-green-600 hover:bg-green-700 disabled:!bg-gray-400 text-white px-4 py-2 rounded-lg flex items-center"
           >
             <Plus className="w-4 h-4 mr-1" />
             Add Question
           </button>
           <button
             onClick={onCancel}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center"
+            className="!bg-gray-600 hover:!bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center"
           >
             <X className="w-4 h-4 mr-1" />
             Cancel
@@ -581,7 +581,7 @@ const FinalizeTest = ({ questions, onNavigate, onDataPass }) => {
                   setShowCreateForm(true);
                   setEditingIndex(-1);
                 }}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center"
+                className="!bg-green-600 hover:!bg-green-700 text-white px-4 py-2 rounded-lg flex items-center"
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Add Question
