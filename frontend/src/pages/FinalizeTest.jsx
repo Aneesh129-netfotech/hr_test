@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, Settings, AlertCircle, Clock, Users, User, Mail, Percent, Edit, Trash2, Plus, Save, X } from 'lucide-react';
+import { CheckCircle, Settings, AlertCircle, Clock, Users, User, Mail, Percent, Edit, Trash2, Plus, Save, X, Send } from 'lucide-react';
 import { finalizeTest } from '../api';
 
 const FinalizeTest = ({ questions, onNavigate, onDataPass }) => {
@@ -10,6 +10,9 @@ const FinalizeTest = ({ questions, onNavigate, onDataPass }) => {
   const [candidates, setCandidates] = useState([]);
   const [candidatesLoading, setCandidatesLoading] = useState(false);
   const [candidatesError, setCandidatesError] = useState('');
+  const [mailLoading, setMailLoading] = useState(false);
+  const [mailSuccess, setMailSuccess] = useState('');
+  const [mailError, setMailError] = useState('');
   
   // Edit state
   const [editableQuestions, setEditableQuestions] = useState([]);
@@ -51,6 +54,47 @@ const FinalizeTest = ({ questions, onNavigate, onDataPass }) => {
       setCandidatesError('Failed to load candidates');
     } finally {
       setCandidatesLoading(false);
+    }
+  };
+
+  // Send mail to candidates
+  const sendMailToCandidates = async () => {
+    setMailLoading(true);
+    setMailError('');
+    setMailSuccess('');
+    
+    try {
+      const candidateEmails = candidates.map(candidate => ({
+        email: candidate.email,
+        name: candidate.name
+      }));
+
+      const mailData = {
+        candidates: candidateEmails,
+        testLink: testLink,
+        testDuration: testDuration,
+        totalQuestions: editableQuestions.length
+      };
+
+      const response = await fetch('http://localhost:3001/api/send-test-invitation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(mailData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send emails');
+      }
+
+      const result = await response.json();
+      setMailSuccess(`Successfully sent test invitations to ${candidateEmails.length} candidates!`);
+    } catch (err) {
+      console.error('Error sending emails:', err);
+      setMailError('Failed to send emails. Please try again.');
+    } finally {
+      setMailLoading(false);
     }
   };
 
@@ -421,11 +465,49 @@ const FinalizeTest = ({ questions, onNavigate, onDataPass }) => {
               </button>
             </div>
 
+            {/* Mail Status Messages */}
+            {mailSuccess && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 flex items-center">
+                <CheckCircle className="w-5 h-5 text-green-500 mr-3" />
+                <span className="text-green-700">{mailSuccess}</span>
+              </div>
+            )}
+
+            {mailError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-center">
+                <AlertCircle className="w-5 h-5 text-red-500 mr-3" />
+                <span className="text-red-700">{mailError}</span>
+              </div>
+            )}
+
             {/* Selected Applicants Section */}
             <div className="border-t pt-8">
-              <div className="flex items-center mb-6">
-                <Users className="w-6 h-6 text-purple-600 mr-3" />
-                <h2 className="text-2xl font-bold text-gray-900">Selected Applicants</h2>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <Users className="w-6 h-6 text-purple-600 mr-3" />
+                  <h2 className="text-2xl font-bold text-gray-900">Selected Applicants</h2>
+                </div>
+                
+                {/* Send Mail Button */}
+                {candidates.length > 0 && (
+                  <button
+                    onClick={sendMailToCandidates}
+                    disabled={mailLoading}
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 flex items-center shadow-lg"
+                  >
+                    {mailLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                        Sending Mails...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-5 h-5 mr-2" />
+                        Send Test Invitations
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
 
               {candidatesLoading && (
