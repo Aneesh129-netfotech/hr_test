@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { FileText, AlertCircle, Target, Hash, Zap, Award, Layers } from 'lucide-react';
 import { generateTest } from '../api';
 
-const GenerateTest = ({ onNavigate, onDataPass }) => {
+const GenerateTest = ({ onNavigate, onDataPass, jdId }) => {
   const [formData, setFormData] = useState({
     topic: '',
     difficulty: 'easy',
     num_questions: 5,
-    question_type: 'mcq',  
+    question_type: 'mcq',
+    jd_id: jdId || null,  // Store the jd_id in form data
   });
   const [mcqCount, setMcqCount] = useState('');
   const [codingCount, setCodingCount] = useState('');
@@ -20,7 +21,11 @@ const GenerateTest = ({ onNavigate, onDataPass }) => {
     const fetchJobSummary = async () => {
       try {
         setJobSummaryLoading(true);
-        const response = await fetch('http://localhost:5000/api/jd/get-jd-summary/68870990e214ee4cab4957db', {
+        
+        // Use the passed jdId or fallback to the hardcoded one
+        const jobDescriptionId = jdId || '68870990e214ee4cab4957db';
+        
+        const response = await fetch(`http://localhost:5000/api/jd/get-jd-summary/${jobDescriptionId}`, {
           headers: {
             'Content-Type': 'application/json',
           },
@@ -28,13 +33,19 @@ const GenerateTest = ({ onNavigate, onDataPass }) => {
         if (!response.ok) throw new Error('Failed to fetch job summary');
         const data = await response.json();
         const jobSummary = data.jobSummary; // Extract only the jobSummary field
-        setFormData(prev => ({ ...prev, topic: jobSummary }));
+        
+        setFormData(prev => ({ 
+          ...prev, 
+          topic: jobSummary,
+          jd_id: jobDescriptionId  // Make sure jd_id is set
+        }));
       } catch (err) {
         console.error('Error fetching job summary:', err);
         setError('Failed to load job summary. Using default value.');
         setFormData(prev => ({
           ...prev,
-          topic: 'Mock job summary: Python developer role requiring skills in web development and data analysis.'
+          topic: 'Mock job summary: Python developer role requiring skills in web development and data analysis.',
+          jd_id: jdId || null
         }));
       } finally {
         setJobSummaryLoading(false);
@@ -42,7 +53,15 @@ const GenerateTest = ({ onNavigate, onDataPass }) => {
     };
 
     fetchJobSummary();
-  }, []);
+  }, [jdId]);
+
+  // Update formData when jdId prop changes
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      jd_id: jdId || null
+    }));
+  }, [jdId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -57,10 +76,16 @@ const GenerateTest = ({ onNavigate, onDataPass }) => {
         finalFormData.num_questions = finalFormData.mcq_count + finalFormData.coding_count;
       }
 
+      // Make sure jd_id is included in the final form data
+      finalFormData.jd_id = jdId || formData.jd_id;
+
+      console.log('Sending form data with jd_id:', finalFormData.jd_id); // Debug log
+
       const data = await generateTest(finalFormData);
       onNavigate('finalize', data.questions); // Navigate + pass questions
     } catch (err) {
       setError('Failed to generate test.');
+      console.error('Error generating test:', err);
     } finally {
       setLoading(false);
     }
@@ -132,6 +157,9 @@ const GenerateTest = ({ onNavigate, onDataPass }) => {
               <div>
                 <h2 className="text-xl font-semibold text-white">Test Configuration</h2>
                 <p className="text-slate-300">Configure your assessment parameters</p>
+                {jdId && (
+                  <p className="text-slate-400 text-sm">Job ID: {jdId}</p>
+                )}
               </div>
             </div>
           </div>
