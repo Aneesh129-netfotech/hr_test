@@ -15,8 +15,6 @@ const GenerateTest = ({ onNavigate, onDataPass }) => {
   const [jobSummaryLoading, setJobSummaryLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const JOB_SUMMARY_API_TOKEN = "Pass the authorization token when the hr login"; // Hardcoded token
-
   // Fetch job summary from API on component mount
   useEffect(() => {
     const fetchJobSummary = async () => {
@@ -24,7 +22,6 @@ const GenerateTest = ({ onNavigate, onDataPass }) => {
         setJobSummaryLoading(true);
         const response = await fetch('http://localhost:5000/api/jd/get-jd-summary/68870990e214ee4cab4957db', {
           headers: {
-            'Authorization': `Bearer ${JOB_SUMMARY_API_TOKEN}`, // Use hardcoded token
             'Content-Type': 'application/json',
           },
         });
