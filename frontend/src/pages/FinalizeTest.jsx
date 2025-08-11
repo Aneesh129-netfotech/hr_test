@@ -109,7 +109,8 @@ const FinalizeTest = ({ questions, onNavigate, onDataPass }) => {
     try {
       const testData = {
         questions: editableQuestions, // Use edited questions instead of original
-        duration: testDuration
+        duration: testDuration,
+        jd_id:jdId
       };
       
       const data = await finalizeTest(testData);

@@ -3,6 +3,7 @@ from schemas.test_schemas import TestRequest, TestFinalizeRequest
 from services.test_generator import generate_questions
 from db.supabase import supabase
 from uuid import uuid4
+from typing import List
 from datetime import datetime, timedelta
 
 router = APIRouter()
@@ -22,6 +23,7 @@ async def finalize_test(request: TestFinalizeRequest):
     # Insert into question_sets with duration
     supabase.table("question_sets").insert({
         "id": question_set_id,
+        "jd_id": request.jd_id,
         "created_at": created_at.isoformat(),
         "expires_at": expires_at.isoformat(),
         "duration": request.duration  # Add duration field
@@ -31,6 +33,7 @@ async def finalize_test(request: TestFinalizeRequest):
     for q in request.questions:
         supabase.table("questions").insert({
             "question_set_id": question_set_id,
+            "jd_id": request.jd_id,
             "question": q.question,        # ✅ Access attributes
             "options": q.options,          # ✅ Might be None
             "answer": q.answer,            # ✅ Optional
@@ -42,6 +45,7 @@ async def finalize_test(request: TestFinalizeRequest):
     return {
         "test_link": test_link,
         "test_id": question_set_id,
+        "jd_id": request.jd_id,
         "duration": request.duration,
         "message": "Test finalized successfully"
     }
@@ -174,3 +178,22 @@ async def extend_test_expiry(test_id: str, hours: int = 24):
     except Exception as e:
         print(f"❌ Error extending test expiry: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to extend test expiry: {str(e)}")
+
+
+@router.get("/questions/{jd_id}")
+async def get_questions_by_jd(jd_id: str):
+    try:
+        # ✅ Fetch questions from Supabase by jd_id
+        response = supabase.table("questions").select("*").eq("jd_id", jd_id).execute()
+ 
+        if not response.data:
+            raise HTTPException(status_code=404, detail="No questions found for this jd_id")
+ 
+        return {
+            "jd_id": jd_id,
+            "total_questions": len(response.data),
+            "questions": response.data
+        }
+ 
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

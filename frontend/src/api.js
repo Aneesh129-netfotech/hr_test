@@ -13,9 +13,13 @@ export const generateTest = async (formData) => {
 
 export const finalizeTest = async (data) => {
   // Handle both old format (just questions) and new format (questions + duration)
+  console.log("data---->",data);
+  
   const requestData = {
     questions: data.questions || data,
-    duration: data.duration || 20  // Default to 20 minutes
+    duration: data.duration || 20,
+    jd_id:data.jd_id
+     // Default to 20 minutes
   };
 
   const response = await fetch(`${BASE_URL}/api/hr/finalize-test`, {
